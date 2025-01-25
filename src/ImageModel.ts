@@ -1,15 +1,15 @@
 import ImageType from './ImageType';
 import { compareImages, estimateFileSize, inferImageType } from './utils';
 
-type ConversionSettings = {
+export type ConversionSettings = {
   quality?: number;
   maxFileSize?: number;
 };
 
-interface QualityConfig {
+export type QualityConfig = {
   maxDifference?: number;
   initialQuality?: number;
-}
+};
 
 export type ImageModelProps = {
   filename: string;

@@ -1,12 +1,12 @@
 import ImageType from './ImageType';
-type ConversionSettings = {
+export type ConversionSettings = {
     quality?: number;
     maxFileSize?: number;
 };
-interface QualityConfig {
+export type QualityConfig = {
     maxDifference?: number;
     initialQuality?: number;
-}
+};
 export type ImageModelProps = {
     filename: string;
     type: ImageType;
