@@ -1,4 +1,8 @@
 import ImageType from './ImageType';
+type ConversionSettings = {
+    quality?: number;
+    maxFileSize?: number;
+};
 interface QualityConfig {
     maxDifference?: number;
     initialQuality?: number;
@@ -24,14 +28,9 @@ declare class ImageModel {
     initializeCanvas(): void;
     getDataURL(type?: ImageType, quality?: number): string;
     getImageData(): ImageData;
-    convert(type: ImageType, quality?: number): Promise<ImageModel>;
-    convertAutoQuality(type: ImageType, config?: QualityConfig): Promise<{
-        image: ImageModel;
-        quality: number;
-    }>;
-    compress(maxFileSize: number, type: ImageType, initialQuality?: number): Promise<{
-        image: ImageModel;
-        quality: number;
-    }>;
+    convert(type: ImageType, settings?: ConversionSettings): Promise<ImageModel>;
+    convertQuality(type: ImageType, quality: number): Promise<ImageModel>;
+    convertAutoQuality(type: ImageType, config?: QualityConfig): Promise<ImageModel>;
+    compress(maxFileSize: number, type?: ImageType): Promise<ImageModel>;
 }
 export default ImageModel;

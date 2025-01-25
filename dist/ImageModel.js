@@ -61,7 +61,23 @@ class ImageModel {
     getImageData() {
         return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
     }
-    convert(type, quality) {
+    async convert(type, settings = {}) {
+        const customQuality = [ImageType.JPG, ImageType.JPEG, ImageType.WEBP].includes(type);
+        const maxFileSize = customQuality ? settings.maxFileSize ?? -1 : -1;
+        let quality = customQuality ? settings.quality ?? -1 : 1;
+        let image;
+        if (quality === -1) {
+            image = await this.convertAutoQuality(type);
+        }
+        else {
+            image = await this.convertQuality(type, quality);
+        }
+        if (maxFileSize !== -1 && image.size > maxFileSize) {
+            image = await image.compress(maxFileSize);
+        }
+        return image;
+    }
+    async convertQuality(type, quality) {
         return new Promise((resolve) => {
             const src = this.getDataURL(type, quality);
             const img = new Image();
@@ -77,38 +93,38 @@ class ImageModel {
         const imageData = this.getImageData();
         let low = 0;
         let high = initialQuality;
-        let image = this.type === type ? this : await this.convert(type, initialQuality);
+        let image = this.type === type ? this : await this.convertQuality(type, high);
         const baseDiff = await compareImages(imageData, image.getImageData());
         while (high - low > 0.001) {
             const quality = (low + high) / 2;
-            const convertedImage = await this.convert(type, quality);
+            const convertedImage = await this.convertQuality(type, quality);
             const difference = await compareImages(imageData, convertedImage.getImageData());
             if (difference <= maxDifference + baseDiff) {
                 image = convertedImage;
-                high = quality; // Try lower qualities
+                high = quality;
             }
             else {
-                low = quality; // Increase quality
+                low = quality;
             }
         }
-        return { image, quality: high };
+        return image;
     }
-    async compress(maxFileSize, type, initialQuality = 1) {
+    async compress(maxFileSize, type = this.type) {
         let low = 0;
-        let high = initialQuality;
-        let image = this;
+        let high = 1;
+        let image = this.type === type ? this : await this.convertQuality(type, high);
         while (high - low > 0.001) {
             const quality = (low + high) / 2;
-            const convertedImage = await this.convert(type, quality);
+            const convertedImage = await this.convertQuality(type, quality);
             if (convertedImage.size <= maxFileSize) {
                 image = convertedImage;
-                low = quality; // Increase quality to fit within the file size constraint
+                low = quality;
             }
             else {
-                high = quality; // Try lower qualities to further reduce file size
+                high = quality;
             }
         }
-        return { image, quality: low };
+        return image;
     }
 }
 export default ImageModel;
