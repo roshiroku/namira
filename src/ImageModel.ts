@@ -1,6 +1,11 @@
 import ImageType from './ImageType';
 import { compareImages, estimateFileSize, inferImageType } from './utils';
 
+type ConversionSettings = {
+  quality?: number;
+  maxFileSize?: number;
+};
+
 interface QualityConfig {
   maxDifference?: number;
   initialQuality?: number;
@@ -85,7 +90,26 @@ class ImageModel {
     return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  convert(type: ImageType, quality?: number): Promise<ImageModel> {
+  async convert(type: ImageType, settings: ConversionSettings = {}): Promise<ImageModel> {
+    const customQuality = [ImageType.JPG, ImageType.JPEG, ImageType.WEBP].includes(type);
+    const maxFileSize = customQuality ? settings.maxFileSize ?? -1 : -1;
+    let quality = customQuality ? settings.quality ?? -1 : 1;
+    let image: ImageModel;
+
+    if (quality === -1) {
+      image = await this.convertAutoQuality(type);
+    } else {
+      image = await this.convertQuality(type, quality);
+    }
+
+    if (maxFileSize !== -1 && image.size > maxFileSize) {
+      image = await image.compress(maxFileSize);
+    }
+
+    return image;
+  }
+
+  async convertQuality(type: ImageType, quality: number): Promise<ImageModel> {
     return new Promise((resolve) => {
       const src = this.getDataURL(type, quality);
       const img = new Image();
@@ -99,55 +123,48 @@ class ImageModel {
     });
   }
 
-  async convertAutoQuality(
-    type: ImageType,
-    config: QualityConfig = {}
-  ): Promise<{ image: ImageModel; quality: number; }> {
+  async convertAutoQuality(type: ImageType, config: QualityConfig = {}): Promise<ImageModel> {
     const { maxDifference = 0.005, initialQuality = 1 } = config;
     const imageData = this.getImageData();
     let low = 0;
     let high = initialQuality;
-    let image: ImageModel = this.type === type ? this : await this.convert(type, initialQuality);
+    let image: ImageModel = this.type === type ? this : await this.convertQuality(type, high);
     const baseDiff = await compareImages(imageData, image.getImageData());
 
     while (high - low > 0.001) {
       const quality = (low + high) / 2;
-      const convertedImage = await this.convert(type, quality);
+      const convertedImage = await this.convertQuality(type, quality);
       const difference = await compareImages(imageData, convertedImage.getImageData());
 
       if (difference <= maxDifference + baseDiff) {
         image = convertedImage;
-        high = quality; // Try lower qualities
+        high = quality;
       } else {
-        low = quality; // Increase quality
+        low = quality;
       }
     }
 
-    return { image, quality: high };
+    return image;
   }
 
-  async compress(
-    maxFileSize: number,
-    type: ImageType,
-    initialQuality: number = 1
-  ): Promise<{ image: ImageModel; quality: number; }> {
+  async compress(maxFileSize: number, type: ImageType = this.type): Promise<ImageModel> {
     let low = 0;
-    let high = initialQuality;
-    let image: ImageModel = this;
+    let high = 1;
+    let image: ImageModel = this.type === type ? this : await this.convertQuality(type, high);
 
     while (high - low > 0.001) {
       const quality = (low + high) / 2;
-      const convertedImage = await this.convert(type, quality);
+      const convertedImage = await this.convertQuality(type, quality);
 
       if (convertedImage.size <= maxFileSize) {
         image = convertedImage;
-        low = quality; // Increase quality to fit within the file size constraint
+        low = quality;
       } else {
-        high = quality; // Try lower qualities to further reduce file size
+        high = quality;
       }
     }
 
-    return { image, quality: low };
+    return image;
   }
 }
 
