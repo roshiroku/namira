@@ -1,5 +1,5 @@
 import ImageType from './ImageType';
-import { compareImages, estimateFileSize, inferImageType } from './utils/image.utils';
+import { compareImages, estimateFileSize, inferImageType } from './utils';
 
 interface QualityConfig {
   maxDifference?: number;

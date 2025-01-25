@@ -1,4 +1,4 @@
-import ImageType from '../ImageType';
+import ImageType from './ImageType';
 
 export const compareImages = async (data1: ImageData, data2: ImageData): Promise<number> => {
   try {
