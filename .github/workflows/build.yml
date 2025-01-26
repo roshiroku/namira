@@ -64,8 +64,10 @@ jobs:
       # Step 3: Verify downloaded files
       - name: Verify downloaded files
         run: |
+          echo "Root directory contents:"
           ls -la
-          ls -la dist
+          echo "Contents of dist directory:"
+          ls -la dist || echo "dist directory does not exist"
 
       # Step 4: Deploy to build branch
       - name: Deploy to build branch
@@ -76,8 +78,8 @@ jobs:
           git checkout build || git checkout --orphan build
           git reset --hard
           git clean -fdx
-          cp -r dist/* . || echo "No dist files to copy"
-          cp package.json . || echo "No package.json file to copy"
+          mv dist/* . || echo "No dist files to move"
+          mv package.json . || echo "No package.json file to move"
           git add .
           git commit -m "Build and deploy to build branch"
           git push -f origin build
