@@ -32,7 +32,9 @@ jobs:
       # Step 5: Verify files before upload
       - name: Verify build files
         run: |
+          echo "Root directory contents before upload:"
           ls -la
+          echo "Contents of dist directory:"
           ls -la dist
 
       # Step 6: Upload production-ready build files
@@ -61,25 +63,26 @@ jobs:
         with:
           name: production-files
 
-      # Step 3: Verify downloaded files
-      - name: Verify downloaded files
+      # Step 3: Save files to a temporary directory
+      - name: Save files to temporary directory
         run: |
-          echo "Root directory contents after download:"
-          ls -la
-          echo "Contents of dist directory:"
-          ls -la dist || echo "dist directory does not exist"
+          mkdir temp_output
+          mv dist temp_output/
+          mv package.json temp_output/
+          echo "Temporary directory contents:"
+          ls -la temp_output
 
       # Step 4: Deploy to build branch
       - name: Deploy to build branch
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git fetch origin
+          git fetch
           git checkout build || git checkout --orphan build
           git reset --hard
           git clean -fdx
-          cp -r ./dist/* . || echo "No dist files to copy"
-          cp ./package.json . || echo "No package.json file to copy"
+          mv temp_output/dist/* . || echo "No dist files to move"
+          mv temp_output/package.json . || echo "No package.json file to move"
           git add .
           git commit -m "Build and deploy to build branch"
           git push -f origin build
