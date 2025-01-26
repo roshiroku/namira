@@ -51,6 +51,12 @@ jobs:
         with:
           name: production-files
 
+      - name: Move artifact files to a temporary directory
+        run: |
+          mkdir -p /tmp/build_artifacts
+          mv dist /tmp/build_artifacts/ || echo "No dist directory found in artifact"
+          mv package.json /tmp/build_artifacts/ || echo "No package.json found in artifact"
+
       - name: Deploy to build branch
         run: |
           # Configure Git
@@ -64,12 +70,12 @@ jobs:
           # Clear the build branch
           git rm -rf . || echo "Nothing to remove, starting from an empty branch"
 
-          # Copy only the necessary files
-          cp -r dist/* . || echo "No dist files to copy"
-          cp package.json . || echo "No package.json file to copy"
+          # Restore files from the temporary directory
+          cp -r /tmp/build_artifacts/dist/* ./ || echo "No dist files to copy"
+          cp /tmp/build_artifacts/package.json ./ || echo "No package.json file to copy"
 
-          # Commit and push changes
-          git add .
+          # Stage and commit changes
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
