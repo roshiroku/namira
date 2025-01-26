@@ -1,8 +1,9 @@
 {
-  "name": "namira-core",
+  "name": "namira",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "dev": "tsc --watch",
     "build": "tsc"
   },
   "keywords": [],
