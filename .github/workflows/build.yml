@@ -33,20 +33,22 @@ jobs:
       - name: Build the project
         run: npm run build --if-present
 
-      # Step 6: Prepare files for the build branch
+      # Step 5: Prepare files for the build branch
       - name: Prepare files for deployment
         run: |
           mkdir output
           cp -r dist/* output/
           cp package.json output/
 
-      # Step 7: Push to build branch
+      # Step 6: Push to build branch
       - name: Push to build branch
         if: success()  # Only deploy if the build and tests succeed
-        uses: actions-js/push@v1
-        with:
-          branch: build            # Deploy to the 'build' branch
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          force: true              # Overwrite the branch contents
-          message: "Build and deploy to build branch"
-          directory: output        # Directory to push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout -b build
+          git add -f output/*
+          git commit -m "Build and deploy to build branch"
+          git push -f origin build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
