@@ -1,0 +1,52 @@
+name: Build and Deploy to Build Branch
+
+on:
+  push:
+    branches: [ "main" ]  # Trigger on push to main branch
+  pull_request:
+    branches: [ "main" ]  # Trigger on pull requests to main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]  # Test across multiple Node.js versions
+
+    steps:
+      # Step 1: Check out repository
+      - uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js with caching
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Build the project
+      - name: Build the project
+        run: npm run build --if-present
+
+      # Step 6: Prepare files for the build branch
+      - name: Prepare files for deployment
+        run: |
+          mkdir output
+          cp -r dist/* output/
+          cp package.json output/
+
+      # Step 7: Push to build branch
+      - name: Push to build branch
+        if: success()  # Only deploy if the build and tests succeed
+        uses: actions-js/push@v1
+        with:
+          branch: build            # Deploy to the 'build' branch
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true              # Overwrite the branch contents
+          message: "Build and deploy to build branch"
+          directory: output        # Directory to push
