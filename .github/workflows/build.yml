@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18  # Use a specific Node.js version
+          node-version: 18
 
       # Step 3: Install dependencies
       - name: Install dependencies
@@ -37,6 +37,7 @@ jobs:
           path: |
             dist
             package.json
+          if-no-files-found: error  # Fail if files are missing
 
   deploy:
     name: Deploy to Build Branch
@@ -63,7 +64,7 @@ jobs:
           git checkout build || git checkout --orphan build
           git reset --hard
           git clean -fdx
-          cp -r dist/* .
+          cp -r dist/* . || echo "No dist files to copy"
           cp package.json .
           git add .
           git commit -m "Build and deploy to build branch"
