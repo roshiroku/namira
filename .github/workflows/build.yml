@@ -3,7 +3,10 @@ name: Build and Deploy to Build Branch
 on:
   push:
     branches:
-      - main  # Trigger on push to the main branch
+      - main
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -11,33 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out repository
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         uses: bahmutov/npm-install@v1
 
-      # Step 4: Build the project
       - name: Build the project
         run: npm run build
 
-      # Step 5: Verify files before upload
-      - name: Verify build files
-        run: |
-          echo "Root directory contents before upload:"
-          ls -la
-          echo "Contents of dist directory:"
-          ls -la dist
-
-      # Step 6: Upload production-ready build files
       - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
@@ -45,7 +35,7 @@ jobs:
           path: |
             dist
             package.json
-          if-no-files-found: error  # Fail if files are missing
+          if-no-files-found: error
 
   deploy:
     name: Deploy to Build Branch
@@ -53,26 +43,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out repository
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Step 2: Download the build artifact
       - name: Download build files
         uses: actions/download-artifact@v4
         with:
           name: production-files
 
-      # Step 3: Move files to a safe temporary directory
-      - name: Move files to /tmp
-        run: |
-          mkdir -p /tmp/temp_output
-          mv dist /tmp/temp_output/
-          mv package.json /tmp/temp_output/
-          echo "Temporary directory contents:"
-          ls -la /tmp/temp_output
-
-      # Step 4: Deploy to build branch
       - name: Deploy to build branch
         run: |
           git config --global user.name "GitHub Actions"
@@ -81,8 +59,8 @@ jobs:
           git checkout build || git checkout --orphan build
           git reset --hard
           git clean -fdx
-          cp -r /tmp/temp_output/dist/* . || echo "No dist files to copy"
-          cp /tmp/temp_output/package.json . || echo "No package.json file to copy"
+          mv dist/* . || echo "No dist files to move"
+          mv package.json . || echo "No package.json file to move"
           git add .
           git commit -m "Build and deploy to build branch"
           git push -f origin build
