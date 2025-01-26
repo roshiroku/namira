@@ -57,18 +57,20 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          # Create or switch to the build branch
+          # Fetch and switch to the build branch
           git fetch origin build || echo "No existing build branch found"
           git checkout build || git checkout --orphan build
 
-          # Copy files to the branch
-          mkdir -p dist
-          cp -r ./dist/* ./dist || echo "No dist files to copy"
-          cp ./package.json ./ || echo "No package.json file to copy"
+          # Clear the build branch
+          git rm -rf . || echo "Nothing to remove, starting from an empty branch"
 
-          # Stage and commit changes if there are any
-          git add -A
-          if git diff-index --quiet HEAD --; then
+          # Copy only the necessary files
+          cp -r dist/* . || echo "No dist files to copy"
+          cp package.json . || echo "No package.json file to copy"
+
+          # Commit and push changes
+          git add .
+          if git diff --cached --quiet; then
             echo "No changes to commit."
           else
             git commit -m "Build and deploy to build branch"
