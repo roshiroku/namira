@@ -63,14 +63,14 @@ jobs:
         with:
           name: production-files
 
-      # Step 3: Save files to a temporary directory
-      - name: Save files to temporary directory
+      # Step 3: Move files to a safe temporary directory
+      - name: Move files to /tmp
         run: |
-          mkdir temp_output
-          mv dist temp_output/
-          mv package.json temp_output/
+          mkdir -p /tmp/temp_output
+          mv dist /tmp/temp_output/
+          mv package.json /tmp/temp_output/
           echo "Temporary directory contents:"
-          ls -la temp_output
+          ls -la /tmp/temp_output
 
       # Step 4: Deploy to build branch
       - name: Deploy to build branch
@@ -81,8 +81,8 @@ jobs:
           git checkout build || git checkout --orphan build
           git reset --hard
           git clean -fdx
-          mv temp_output/dist/* . || echo "No dist files to move"
-          mv temp_output/package.json . || echo "No package.json file to move"
+          cp -r /tmp/temp_output/dist/* . || echo "No dist files to copy"
+          cp /tmp/temp_output/package.json . || echo "No package.json file to copy"
           git add .
           git commit -m "Build and deploy to build branch"
           git push -f origin build
