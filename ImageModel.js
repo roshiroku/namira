@@ -24,6 +24,7 @@ class ImageModel {
                 data.size = input.size;
             }
             else {
+                img.crossOrigin = 'anonymous';
                 data.src = img.src = input;
                 data.filename = input.split('/').pop() || 'unknown';
                 data.type = inferImageType(input);
@@ -116,8 +117,10 @@ class ImageModel {
         while (high - low > 0.001) {
             const quality = (low + high) / 2;
             const convertedImage = await this.convertQuality(type, quality);
-            if (convertedImage.size <= maxFileSize) {
+            if (Math.abs(maxFileSize - convertedImage.size) < Math.abs(maxFileSize - image.size)) {
                 image = convertedImage;
+            }
+            if (convertedImage.size <= maxFileSize) {
                 low = quality;
             }
             else {
