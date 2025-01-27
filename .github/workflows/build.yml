@@ -33,7 +33,7 @@ jobs:
         with:
           name: production-files
           path: |
-            dist
+            dist/*
             package.json
           if-no-files-found: error
 
@@ -43,6 +43,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Download build files
         uses: actions/download-artifact@v4
         with:
