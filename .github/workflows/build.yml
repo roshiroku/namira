@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write  # Required to push changes to the build branch
+  contents: write
 
 jobs:
   build:
@@ -14,54 +14,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false  # Ensure only the provided token is used
-          fetch-depth: 0              # Allow pushing refs without errors
 
-      # Step 2: Set up Node.js
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         uses: bahmutov/npm-install@v1
 
-      # Step 4: Build the project
       - name: Build the project
         run: npm run build
 
-      # Step 5: Prepare the build branch
-      - name: Prepare build branch
-        run: |
-          # Configure Git user for commits
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-          # Switch to the build branch or create it if it doesn't exist
-          if git show-ref --quiet refs/heads/build; then
-            git checkout build
-          else
-            git checkout --orphan build
-          fi
-
-          # Clean the branch and prepare for new files
-          git rm -rf . || echo "Nothing to remove"
-          mkdir -p dist
-
-          # Copy the build files into the current directory
-          cp -r dist/* . || echo "No dist files to copy"
-          cp package.json . || echo "No package.json file to copy"
-
-      # Step 6: Push to build branch
-      - name: Push changes to build branch
-        uses: ad-m/github-push-action@master
+      - name: Upload build files
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: build          # Target branch
-          force: true            # Force push to overwrite existing content
-          directory: .           # Push files from the current directory
+          name: production-files
+          path: |
+            dist
+            package.json
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy to Build Branch
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download build files
+        uses: actions/download-artifact@v4
+        with:
+          name: production-files
+
+      - name: Move artifact files to a temporary directory
+        run: |
+          mkdir -p /tmp/build_artifacts
+          mv dist /tmp/build_artifacts/ || echo "No dist directory found in artifact"
+          mv package.json /tmp/build_artifacts/ || echo "No package.json found in artifact"
+
+      - name: Deploy to build branch
+        run: |
+          # Configure Git
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Fetch and switch to the build branch
+          git fetch origin build || echo "No existing build branch found"
+          git checkout build || git checkout --orphan build
+
+          # Clear the build branch
+          git rm -rf . || echo "Nothing to remove, starting from an empty branch"
+
+          # Restore files from the temporary directory
+          cp -r /tmp/build_artifacts/dist/* ./ || echo "No dist files to copy"
+          cp /tmp/build_artifacts/package.json ./ || echo "No package.json file to copy"
+
+          # Stage and commit changes
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Build and deploy to build branch"
+            git push -f origin build
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
