@@ -8,29 +8,47 @@ class ImageModel {
     img;
     canvas;
     ctx;
-    static create(input) {
-        return new Promise((resolve, reject) => {
-            const data = {};
-            const img = new Image();
-            img.onload = () => resolve(new ImageModel({ ...data, img }));
-            img.onerror = () => reject(new Error('Failed to load image'));
-            if (input instanceof File) {
-                const reader = new FileReader();
-                reader.onload = () => data.src = img.src = `${reader.result}`;
+    static async create(input) {
+        const data = {};
+        const img = new Image();
+        if (input instanceof File) {
+            const reader = new FileReader();
+            reader.readAsDataURL(input);
+            await new Promise((resolve, reject) => {
+                reader.onload = () => {
+                    data.src = img.src = `${reader.result}`;
+                    resolve(null);
+                };
                 reader.onerror = () => reject(new Error('Failed to read file'));
-                reader.readAsDataURL(input);
-                data.filename = input.name;
-                data.type = input.type;
-                data.size = input.size;
+            });
+            data.filename = input.name;
+            data.type = input.type;
+            data.size = input.size;
+        }
+        else {
+            try {
+                const response = await fetch(input, { mode: 'cors' });
+                if (!response.ok)
+                    throw new Error('Failed to fetch image');
+                const blob = await response.blob();
+                data.src = img.src = URL.createObjectURL(blob);
+                data.filename = input.split('/').pop() || 'unknown';
+                data.type = blob.type;
+                data.size = blob.size;
             }
-            else {
+            catch {
                 img.crossOrigin = 'anonymous';
                 data.src = img.src = input;
                 data.filename = input.split('/').pop() || 'unknown';
                 data.type = inferImageType(input);
                 data.size = 0; // Size is not available for URL sources
             }
+        }
+        await new Promise((resolve, reject) => {
+            img.onload = () => resolve(null);
+            img.onerror = () => reject(new Error('Failed to load image'));
         });
+        return new ImageModel({ ...data, img });
     }
     constructor({ filename, type, size, src, img }) {
         this.filename = filename;
